@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getProgress, saveProgress, clearProgress } from '@/lib/storage';
+import { Task } from '@/types';
 
 interface UseProgressReturn {
   completedTaskIds: string[];
@@ -9,6 +10,7 @@ interface UseProgressReturn {
   toggleTask: (taskId: string) => void;
   completeTask: (taskId: string) => void;
   uncompleteTask: (taskId: string) => void;
+  completeTaskWithPrerequisites: (taskId: string, tasksMap: Map<string, Task>) => void;
   clearAll: () => void;
   getProgressStats: (totalTasks: number) => {
     total: number;
@@ -89,6 +91,42 @@ export function useProgress(): UseProgressReturn {
     clearProgress();
   }, []);
 
+  // 再帰的に前提タスクを収集するヘルパー関数
+  const collectPrerequisites = useCallback(
+    (
+      taskId: string,
+      tasksMap: Map<string, Task>,
+      collected: Set<string> = new Set()
+    ): Set<string> => {
+      if (collected.has(taskId)) {
+        return collected; // 循環参照防止
+      }
+      collected.add(taskId);
+
+      const task = tasksMap.get(taskId);
+      if (task) {
+        for (const prereqId of task.prerequisite_task_ids) {
+          collectPrerequisites(prereqId, tasksMap, collected);
+        }
+      }
+      return collected;
+    },
+    []
+  );
+
+  const completeTaskWithPrerequisites = useCallback(
+    (taskId: string, tasksMap: Map<string, Task>): void => {
+      const taskIdsToComplete = collectPrerequisites(taskId, tasksMap);
+
+      setCompletedTaskIds((prev) => {
+        const newSet = new Set(prev);
+        taskIdsToComplete.forEach((id) => newSet.add(id));
+        return Array.from(newSet);
+      });
+    },
+    [collectPrerequisites]
+  );
+
   const getProgressStats = useCallback(
     (totalTasks: number) => {
       const completed = completedTaskIds.length;
@@ -108,6 +146,7 @@ export function useProgress(): UseProgressReturn {
     toggleTask,
     completeTask,
     uncompleteTask,
+    completeTaskWithPrerequisites,
     clearAll,
     getProgressStats,
   };

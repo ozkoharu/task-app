@@ -37,6 +37,7 @@ class TaskResponse(BaseModel):
     min_player_level: int
     wiki_link: str | None = None
     objectives: list[ObjectiveResponse]
+    prerequisite_task_ids: list[str] = []
 
     class Config:
         from_attributes = True

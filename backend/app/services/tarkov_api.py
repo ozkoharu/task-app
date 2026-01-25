@@ -18,6 +18,10 @@ SYNC_QUERY = """
     trader { id }
     minPlayerLevel
     wikiLink
+    taskRequirements {
+      task { id }
+      status
+    }
     objectives {
       id
       type
@@ -102,19 +106,28 @@ def sync_tasks(db: Session, tasks_data: list) -> int:
         if not trader or not trader.get("id"):
             continue
 
+        # 前提タスクIDを抽出 (statusに"complete"が含まれるもの)
+        prerequisite_ids = [
+            req["task"]["id"]
+            for req in task.get("taskRequirements", [])
+            if req.get("task") and "complete" in req.get("status", [])
+        ]
+
         stmt = insert(Task).values(
             id=task["id"],
             trader_id=trader["id"],
             name=task["name"],
             min_player_level=task.get("minPlayerLevel", 1),
-            wiki_link=task.get("wikiLink")
+            wiki_link=task.get("wikiLink"),
+            prerequisite_task_ids=prerequisite_ids
         ).on_conflict_do_update(
             index_elements=["id"],
             set_={
                 "trader_id": trader["id"],
                 "name": task["name"],
                 "min_player_level": task.get("minPlayerLevel", 1),
-                "wiki_link": task.get("wikiLink")
+                "wiki_link": task.get("wikiLink"),
+                "prerequisite_task_ids": prerequisite_ids
             }
         )
         db.execute(stmt)

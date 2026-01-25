@@ -40,7 +40,8 @@ def task_to_response(task: Task) -> TaskResponse:
         trader=TraderBrief(id=task.trader.id, name=task.trader.name),
         min_player_level=task.min_player_level,
         wiki_link=task.wiki_link,
-        objectives=objectives
+        objectives=objectives,
+        prerequisite_task_ids=task.prerequisite_task_ids or []
     )
 
 
@@ -73,6 +74,54 @@ def get_tasks(
     return TasksListResponse(
         tasks=[task_to_response(task) for task in tasks]
     )
+
+
+@router.get("/tasks/dependencies")
+def get_task_dependencies(
+    trader_id: str | None = Query(None, description="Filter by trader ID"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get task dependency graph data for visualization.
+
+    Returns nodes (tasks) and edges (dependencies) for graph rendering.
+    """
+    query = db.query(Task).options(joinedload(Task.trader))
+
+    if trader_id:
+        query = query.filter(Task.trader_id == trader_id)
+
+    tasks = query.all()
+
+    # Build nodes
+    nodes = []
+    task_ids = set()
+    for task in tasks:
+        task_ids.add(task.id)
+        nodes.append({
+            "id": task.id,
+            "name": task.name,
+            "trader_id": task.trader_id,
+            "trader_name": task.trader.name,
+            "min_player_level": task.min_player_level,
+            "wiki_link": task.wiki_link,
+            "prerequisite_task_ids": task.prerequisite_task_ids or []
+        })
+
+    # Build edges (only include edges where both nodes exist in filtered set)
+    edges = []
+    for task in tasks:
+        for prereq_id in (task.prerequisite_task_ids or []):
+            if prereq_id in task_ids:
+                edges.append({
+                    "from": prereq_id,
+                    "to": task.id
+                })
+
+    return {
+        "nodes": nodes,
+        "edges": edges
+    }
 
 
 @router.get("/tasks/{task_id}", response_model=TaskResponse)
