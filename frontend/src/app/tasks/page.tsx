@@ -1,12 +1,28 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useTasks } from '@/hooks/useTasks';
 import { useProgress } from '@/hooks/useProgress';
+import { useTaskFilter } from '@/hooks/useTaskFilter';
 import TaskList from '@/components/tasks/TaskList';
+import TaskFilter from '@/components/tasks/TaskFilter';
 
 export default function TasksPage() {
   const { traders, tasks, isLoading, error } = useTasks();
   const { completedTaskIds, toggleTask, getProgressStats } = useProgress();
+  const {
+    filters,
+    setTraderId,
+    setStatus,
+    setSearch,
+    clearFilters,
+    filterTasks,
+  } = useTaskFilter();
+
+  const filteredTasks = useMemo(
+    () => filterTasks(tasks, completedTaskIds),
+    [filterTasks, tasks, completedTaskIds]
+  );
 
   if (isLoading) {
     return (
@@ -34,9 +50,20 @@ export default function TasksPage() {
           {stats.completed}/{stats.total} completed ({stats.percentage}%)
         </span>
       </div>
+      <TaskFilter
+        traders={traders}
+        traderId={filters.traderId}
+        status={filters.status}
+        search={filters.search}
+        resultCount={filteredTasks.length}
+        onTraderChange={setTraderId}
+        onStatusChange={setStatus}
+        onSearchChange={setSearch}
+        onClear={clearFilters}
+      />
       <TaskList
         traders={traders}
-        tasks={tasks}
+        tasks={filteredTasks}
         completedTaskIds={completedTaskIds}
         onToggleTask={toggleTask}
       />
