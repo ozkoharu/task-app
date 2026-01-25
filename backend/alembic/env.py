@@ -6,6 +6,10 @@ from sqlalchemy import pool
 
 from alembic import context
 
+# Import models for autogenerate support
+from app.db import Base
+from app.models import Trader, Task, Item, TaskObjective
+
 config = context.config
 
 if config.config_file_name is not None:
@@ -16,7 +20,7 @@ database_url = os.getenv("DATABASE_URL")
 if database_url:
     config.set_main_option("sqlalchemy.url", database_url)
 
-target_metadata = None
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
