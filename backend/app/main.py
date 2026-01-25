@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import sync
+from app.api import sync, traders
 
 app = FastAPI(
     title="Tarkov Task Tracker API",
@@ -29,3 +29,4 @@ def health_check():
 
 
 app.include_router(sync.router, prefix="/api", tags=["sync"])
+app.include_router(traders.router, prefix="/api", tags=["traders"])
