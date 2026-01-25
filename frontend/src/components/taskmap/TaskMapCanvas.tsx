@@ -8,7 +8,6 @@ import {
   MiniMap,
   Node,
   Edge,
-  NodeTypes,
   useNodesState,
   useEdgesState,
   MarkerType,
@@ -28,9 +27,9 @@ interface TaskMapCanvasProps {
   onTaskDoubleClick?: (taskId: string) => void;
 }
 
-const nodeTypes: NodeTypes = {
+const nodeTypes = {
   taskNode: TaskNode,
-};
+} as const;
 
 export function TaskMapCanvas({
   nodes: rawNodes,

@@ -1,7 +1,7 @@
 'use client';
 
 import { memo } from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Handle, Position, type Node } from '@xyflow/react';
 
 export interface TaskNodeData {
   id: string;
@@ -12,7 +12,10 @@ export interface TaskNodeData {
   wikiLink: string | null;
   isCompleted: boolean;
   isAvailable: boolean;
+  [key: string]: unknown;
 }
+
+export type TaskNodeType = Node<TaskNodeData, 'taskNode'>;
 
 const traderColors: Record<string, string> = {
   prapor: 'border-red-500',
@@ -27,7 +30,11 @@ const traderColors: Record<string, string> = {
   default: 'border-tarkov-accent',
 };
 
-function TaskNodeComponent({ data }: NodeProps<TaskNodeData>) {
+interface TaskNodeProps {
+  data: TaskNodeData;
+}
+
+function TaskNodeComponent({ data }: TaskNodeProps) {
   const borderColor = traderColors[data.traderId] || traderColors.default;
 
   const bgClass = data.isCompleted

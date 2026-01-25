@@ -1,15 +1,14 @@
 import dagre from 'dagre';
 import { Node, Edge } from '@xyflow/react';
-import { TaskNodeData } from './TaskNode';
 
 const NODE_WIDTH = 180;
 const NODE_HEIGHT = 60;
 
-export function getLayoutedElements(
-  nodes: Node<TaskNodeData>[],
+export function getLayoutedElements<T extends Record<string, unknown>>(
+  nodes: Node<T>[],
   edges: Edge[],
   direction: 'TB' | 'LR' = 'LR'
-): { nodes: Node<TaskNodeData>[]; edges: Edge[] } {
+): { nodes: Node<T>[]; edges: Edge[] } {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
 
@@ -42,7 +41,7 @@ export function getLayoutedElements(
       },
       targetPosition: isHorizontal ? 'left' : 'top',
       sourcePosition: isHorizontal ? 'right' : 'bottom',
-    } as Node<TaskNodeData>;
+    } as Node<T>;
   });
 
   return { nodes: layoutedNodes, edges };

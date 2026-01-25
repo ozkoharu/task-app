@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getTaskDependencies } from '@/lib/api';
 import { TaskNode, TaskEdge } from '@/types';
 
@@ -18,7 +18,7 @@ export function useTaskDependencies(traderId?: string): UseTaskDependenciesRetur
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -32,11 +32,11 @@ export function useTaskDependencies(traderId?: string): UseTaskDependenciesRetur
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [traderId]);
 
   useEffect(() => {
     fetchData();
-  }, [traderId]);
+  }, [fetchData]);
 
   return {
     nodes,
