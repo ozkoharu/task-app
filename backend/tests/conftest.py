@@ -1,25 +1,55 @@
+import os
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 
 from app.db import Base, get_db
 from app.main import app
 from app.models import Trader, Task, Item, TaskObjective
 
+# テスト用PostgreSQLデータベースURL
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql://postgres:postgres@db:5432/tarkov_test"
+)
 
-@pytest.fixture(scope="function")
-def engine():
-    """Create in-memory SQLite engine for testing."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+
+@pytest.fixture(scope="session")
+def test_engine():
+    """Create PostgreSQL engine for testing."""
+    # メインDBに接続してテストDBを作成
+    main_engine = create_engine(
+        "postgresql://postgres:postgres@db:5432/postgres"
     )
+    with main_engine.connect() as conn:
+        conn.execution_options(isolation_level="AUTOCOMMIT")
+        # 既存の接続を切断してテストDBを再作成
+        conn.execute(text(
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+            "WHERE datname = 'tarkov_test' AND pid <> pg_backend_pid()"
+        ))
+        conn.execute(text("DROP DATABASE IF EXISTS tarkov_test"))
+        conn.execute(text("CREATE DATABASE tarkov_test"))
+    main_engine.dispose()
+
+    # テストDBに接続
+    engine = create_engine(TEST_DATABASE_URL)
     Base.metadata.create_all(bind=engine)
     yield engine
     Base.metadata.drop_all(bind=engine)
+    engine.dispose()
+
+
+@pytest.fixture(scope="function")
+def engine(test_engine):
+    """Use session-scoped engine but clean tables for each test."""
+    # 各テストの前にテーブルをクリア
+    with test_engine.connect() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            conn.execute(table.delete())
+        conn.commit()
+    yield test_engine
 
 
 @pytest.fixture(scope="function")
@@ -81,6 +111,7 @@ def sample_tasks(db_session, sample_traders, sample_items):
             name="Debut",
             min_player_level=1,
             wiki_link="https://wiki.example.com/debut",
+            prerequisite_task_ids=[],
         ),
         Task(
             id="task2",
@@ -88,6 +119,7 @@ def sample_tasks(db_session, sample_traders, sample_items):
             name="Checking",
             min_player_level=2,
             wiki_link="https://wiki.example.com/checking",
+            prerequisite_task_ids=["task1"],  # task1が前提
         ),
         Task(
             id="task3",
@@ -95,6 +127,7 @@ def sample_tasks(db_session, sample_traders, sample_items):
             name="Shortage",
             min_player_level=1,
             wiki_link="https://wiki.example.com/shortage",
+            prerequisite_task_ids=[],
         ),
     ]
     for task in tasks:

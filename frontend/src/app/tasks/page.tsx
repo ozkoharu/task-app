@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useTasks } from '@/hooks/useTasks';
 import { useProgress } from '@/hooks/useProgress';
 import { useTaskFilter } from '@/hooks/useTaskFilter';
@@ -9,7 +9,32 @@ import TaskFilter from '@/components/tasks/TaskFilter';
 
 export default function TasksPage() {
   const { traders, tasks, isLoading, error } = useTasks();
-  const { completedTaskIds, toggleTask, getProgressStats } = useProgress();
+  const {
+    completedTaskIds,
+    isCompleted,
+    uncompleteTask,
+    completeTaskWithPrerequisites,
+    getProgressStats,
+  } = useProgress();
+
+  // タスクIDからタスクを引くためのMapを作成
+  const tasksMap = useMemo(() => {
+    return new Map(tasks.map((task) => [task.id, task]));
+  }, [tasks]);
+
+  // タスクのチェック/チェック解除を処理
+  const handleToggleTask = useCallback(
+    (taskId: string) => {
+      if (isCompleted(taskId)) {
+        // チェック解除の場合は単純に解除
+        uncompleteTask(taskId);
+      } else {
+        // チェックする場合は前提タスクも含めて完了
+        completeTaskWithPrerequisites(taskId, tasksMap);
+      }
+    },
+    [isCompleted, uncompleteTask, completeTaskWithPrerequisites, tasksMap]
+  );
   const {
     filters,
     setTraderId,
@@ -65,7 +90,7 @@ export default function TasksPage() {
         traders={traders}
         tasks={filteredTasks}
         completedTaskIds={completedTaskIds}
-        onToggleTask={toggleTask}
+        onToggleTask={handleToggleTask}
       />
     </div>
   );

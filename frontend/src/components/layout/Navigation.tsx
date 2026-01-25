@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 const navItems = [
   { href: '/', label: 'Dashboard' },
   { href: '/tasks', label: 'Task List' },
+  { href: '/taskmap', label: 'Task Map' },
 ];
 
 export default function Navigation() {

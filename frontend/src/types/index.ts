@@ -36,6 +36,7 @@ export interface Task {
   min_player_level: number;
   wiki_link: string | null;
   objectives: TaskObjective[];
+  prerequisite_task_ids: string[];
 }
 
 export interface TasksResponse {
@@ -45,4 +46,25 @@ export interface TasksResponse {
 export interface ProgressData {
   completedTaskIds: string[];
   updatedAt: string;
+}
+
+// Task dependency graph types
+export interface TaskNode {
+  id: string;
+  name: string;
+  trader_id: string;
+  trader_name: string;
+  min_player_level: number;
+  wiki_link: string | null;
+  prerequisite_task_ids: string[];
+}
+
+export interface TaskEdge {
+  from: string;
+  to: string;
+}
+
+export interface TaskDependenciesResponse {
+  nodes: TaskNode[];
+  edges: TaskEdge[];
 }

@@ -1,10 +1,25 @@
 import { renderHook, act } from '@testing-library/react';
 import { useProgress } from '@/hooks/useProgress';
 import * as storage from '@/lib/storage';
+import { Task } from '@/types';
 
 jest.mock('@/lib/storage');
 
 const mockStorage = storage as jest.Mocked<typeof storage>;
+
+// テスト用のタスクデータ
+const createMockTask = (
+  id: string,
+  prerequisiteTaskIds: string[] = []
+): Task => ({
+  id,
+  name: `Task ${id}`,
+  trader: { id: 'trader1', name: 'Prapor' },
+  min_player_level: 1,
+  wiki_link: null,
+  objectives: [],
+  prerequisite_task_ids: prerequisiteTaskIds,
+});
 
 describe('useProgress', () => {
   beforeEach(() => {
@@ -147,5 +162,121 @@ describe('useProgress', () => {
     });
 
     expect(mockStorage.saveProgress).toHaveBeenCalled();
+  });
+
+  describe('completeTaskWithPrerequisites', () => {
+    it('should complete task and its prerequisite tasks', () => {
+      const { result } = renderHook(() => useProgress());
+
+      // task3 -> task2 -> task1 の依存関係
+      const tasksMap = new Map<string, Task>([
+        ['task1', createMockTask('task1', [])],
+        ['task2', createMockTask('task2', ['task1'])],
+        ['task3', createMockTask('task3', ['task2'])],
+      ]);
+
+      act(() => {
+        result.current.completeTaskWithPrerequisites('task3', tasksMap);
+      });
+
+      // task3をチェックすると、task2, task1も自動的にチェック
+      expect(result.current.isCompleted('task1')).toBe(true);
+      expect(result.current.isCompleted('task2')).toBe(true);
+      expect(result.current.isCompleted('task3')).toBe(true);
+    });
+
+    it('should not duplicate already completed tasks', () => {
+      mockStorage.getProgress.mockReturnValue({
+        completedTaskIds: ['task1'],
+        updatedAt: new Date().toISOString(),
+      });
+
+      const { result } = renderHook(() => useProgress());
+
+      const tasksMap = new Map<string, Task>([
+        ['task1', createMockTask('task1', [])],
+        ['task2', createMockTask('task2', ['task1'])],
+      ]);
+
+      act(() => {
+        result.current.completeTaskWithPrerequisites('task2', tasksMap);
+      });
+
+      // 重複なく追加される
+      expect(result.current.completedTaskIds).toEqual(['task1', 'task2']);
+    });
+
+    it('should handle circular dependencies gracefully', () => {
+      const { result } = renderHook(() => useProgress());
+
+      // 循環参照: taskA -> taskB -> taskA
+      const tasksMap = new Map<string, Task>([
+        ['taskA', createMockTask('taskA', ['taskB'])],
+        ['taskB', createMockTask('taskB', ['taskA'])],
+      ]);
+
+      act(() => {
+        // 循環参照でも無限ループにならない
+        result.current.completeTaskWithPrerequisites('taskA', tasksMap);
+      });
+
+      expect(result.current.isCompleted('taskA')).toBe(true);
+      expect(result.current.isCompleted('taskB')).toBe(true);
+    });
+
+    it('should handle multiple prerequisite tasks', () => {
+      const { result } = renderHook(() => useProgress());
+
+      // task4 -> [task2, task3], task2 -> task1, task3 -> task1
+      const tasksMap = new Map<string, Task>([
+        ['task1', createMockTask('task1', [])],
+        ['task2', createMockTask('task2', ['task1'])],
+        ['task3', createMockTask('task3', ['task1'])],
+        ['task4', createMockTask('task4', ['task2', 'task3'])],
+      ]);
+
+      act(() => {
+        result.current.completeTaskWithPrerequisites('task4', tasksMap);
+      });
+
+      expect(result.current.isCompleted('task1')).toBe(true);
+      expect(result.current.isCompleted('task2')).toBe(true);
+      expect(result.current.isCompleted('task3')).toBe(true);
+      expect(result.current.isCompleted('task4')).toBe(true);
+    });
+
+    it('should handle task with no prerequisites', () => {
+      const { result } = renderHook(() => useProgress());
+
+      const tasksMap = new Map<string, Task>([
+        ['task1', createMockTask('task1', [])],
+      ]);
+
+      act(() => {
+        result.current.completeTaskWithPrerequisites('task1', tasksMap);
+      });
+
+      expect(result.current.isCompleted('task1')).toBe(true);
+      expect(result.current.completedTaskIds).toEqual(['task1']);
+    });
+
+    it('should handle non-existent prerequisite task gracefully', () => {
+      const { result } = renderHook(() => useProgress());
+
+      // task2はtask1を前提とするが、task1はMapに存在しない
+      const tasksMap = new Map<string, Task>([
+        ['task2', createMockTask('task2', ['task1'])],
+      ]);
+
+      act(() => {
+        result.current.completeTaskWithPrerequisites('task2', tasksMap);
+      });
+
+      // task2自体はチェックされる（task1は存在しないのでスキップ）
+      expect(result.current.isCompleted('task2')).toBe(true);
+      // task1はMapに存在しないが、IDとしては追加される
+      expect(result.current.completedTaskIds).toContain('task1');
+      expect(result.current.completedTaskIds).toContain('task2');
+    });
   });
 });

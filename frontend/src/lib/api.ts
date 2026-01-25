@@ -1,4 +1,4 @@
-import { TradersResponse, TasksResponse, Task } from '@/types';
+import { TradersResponse, TasksResponse, Task, TaskDependenciesResponse } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -31,4 +31,15 @@ export async function getTasks(params?: {
 
 export async function getTask(taskId: string): Promise<Task> {
   return fetchApi<Task>(`/api/tasks/${taskId}`);
+}
+
+export async function getTaskDependencies(params?: {
+  trader_id?: string;
+}): Promise<TaskDependenciesResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.trader_id) {
+    searchParams.set('trader_id', params.trader_id);
+  }
+  const query = searchParams.toString();
+  return fetchApi<TaskDependenciesResponse>(`/api/tasks/dependencies${query ? `?${query}` : ''}`);
 }
