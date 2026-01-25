@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
     "next": "14.2.21",
@@ -21,6 +24,7 @@
     "trailingComma": "es5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.41.0",
     "@swc/core": "^1.4.0",
     "@swc/jest": "^0.2.36",
     "@testing-library/jest-dom": "^6.4.2",
